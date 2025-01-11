@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Завантаження відео{% endblock %}
+
+{% block content %}
+<section class="container text-center py-5">
+    <h2>Про сайт</h2>
+    <p>Цей сайт був створений, щоб допомогти вам швидко і зручно завантажувати відео з YouTube. Просто вставте посилання на відео, і ми зробимо все за вас!</p>
+</section>
+
+<!-- Download Section -->
+<section class="download-section" id="download">
+    <h2>Завантаження відео</h2>
+    <p>Просто введіть посилання на відео, і ми завантажимо його для вас!</p>
+    <form action="/" method="POST" class="download-form">
+        <div class="mb-3">
+            <input type="text" class="form-control" name="url" placeholder="Вставте URL відео YouTube" required>
+        </div>
+        <button type="submit" class="btn btn-success btn-lg">Завантажити</button>
+    </form>
+
+    <div id="progress-container" style="display:none;">
+        <div id="progress-bar">0%</div>
+    </div>
+    <div id="loading-text" class="loading-text" style="display:none;">Завантаження...</div>
+    <div id="download-link" style="display:none;">
+        <a href="#" id="download-button" class="btn btn-primary btn-lg" download>Завантажити файл</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block styles %}
+<style>
+    #progress-container {
+        position: relative;
+        width: 100%;
+        height: 30px;
+        background-color: #f3f3f3;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-top: 20px;
+    }
+
+    #progress-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 0%;
+        background-color: #28a745;
+        text-align: center;
+        line-height: 30px;
+        color: #fff;
+        font-weight: bold;
+        transition: width 0.4s ease;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const progressContainer = document.getElementById('progress-container');
+const progressBar = document.getElementById('progress-bar');
+const loadingText = document.getElementById('loading-text');
+const downloadLink = document.getElementById('download-link');
+const downloadButton = document.getElementById('download-button');
+
+// Оновлення прогресу через Socket.IO
+const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+// Оновлення прогресу
+socket.on('progress', function (data) {
+    if (data.progress) {
+        updateProgress(data.progress);
+    }
+    if (data.status) {
+        loadingText.textContent = data.status;
+    }
+});
+
+// Функція для оновлення прогрес-бару
+function updateProgress(percentage) {
+    progressContainer.style.display = 'block';
+    progressBar.style.width = percentage + '%';
+    progressBar.textContent = percentage + '%';
+}
+
+// Обробка форми
+const form = document.querySelector('form.download-form');
+form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    updateProgress(0); // Скидаємо прогрес
+    loadingText.style.display = 'block';
+});
+</script>
+{% endblock %}
