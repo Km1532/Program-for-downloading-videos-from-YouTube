@@ -19,6 +19,7 @@
         <button type="submit" class="btn btn-success btn-lg">Завантажити</button>
     </form>
 
+    <!-- Progress bar container -->
     <div id="progress-container" style="display:none;">
         <div id="progress-bar">0%</div>
     </div>
@@ -62,19 +63,21 @@
 {% block scripts %}
 <script src="https://cdn.socket.io/4.1.3/socket.io.min.js"></script>
 <script>
-const progressContainer = document.getElementById('progress-container');
-const progressBar = document.getElementById('progress-bar');
-const loadingText = document.getElementById('loading-text');
-const downloadLink = document.getElementById('download-link');
-const downloadButton = document.getElementById('download-button');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const loadingText = document.getElementById('loading-text');
+    const downloadLink = document.getElementById('download-link');
+    const downloadButton = document.getElementById('download-button');
 
-const socket = io.connect('http://' + document.domain + ':' + location.port);
+    const socket = io.connect('http://' + document.domain + ':' + location.port);
 
-socket.on('connect', function () {
-    console.log("WebSocket connected");
-});
+    socket.on('connect', function () {
+        console.log("WebSocket connected");
+        loadingText.style.display = 'none';  // Приховуємо "Завантаження..." після підключення
+        progressContainer.style.display = 'none'; // Приховуємо прогрес-бар
+    });
 
-socket.on('progress', function (data) {
+    socket.on('progress', function (data) {
     console.log("Received progress data:", data);
 
     if (data.progress !== undefined) {
@@ -84,20 +87,20 @@ socket.on('progress', function (data) {
         loadingText.textContent = data.status;
     }
 });
+    socket.on('file_ready', function (data) {
+        console.log("Received file_ready data:", data);
 
-socket.on('file_ready', function (data) {
-    console.log("Received file_ready data:", data);
+        if (data.task_id) {
+            downloadButton.href = `/download?task_id=${data.task_id}`;
+            downloadLink.style.display = 'block';  // Показуємо посилання для завантаження
+            loadingText.style.display = 'none';   // Приховуємо текст "Завантаження..."
+        } else {
+            console.error("No task ID received.");
+        }
+    });
 
-    if (data.task_id) {
-        downloadButton.href = `/download?task_id=${data.task_id}`;
-        downloadLink.style.display = 'block';
-        loadingText.style.display = 'none';
-    } else {
-        console.error("No task ID received.");
-    }
-});
-// Update progress bar
-function updateProgress(percentage) {
+  // Update progress bar
+  function updateProgress(percentage) {
     if (percentage === 0) {
         progressContainer.style.display = 'none';
         loadingText.style.display = 'block';
@@ -107,19 +110,18 @@ function updateProgress(percentage) {
         progressBar.textContent = Math.round(percentage) + '%';
     }
 }
+    const form = document.getElementById('download-form');
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const url = document.getElementById('url').value;
+        updateProgress(0);  // Початковий прогрес 0%
+        loadingText.style.display = 'block';  // Показуємо текст "Завантаження..."
+        progressContainer.style.display = 'none';  // Приховуємо прогрес-бар на початку
+        socket.emit('start_download', { url: url });
+    });
 
-const form = document.getElementById('download-form');
-form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const url = document.getElementById('url').value;
-    updateProgress(0);
-    loadingText.style.display = 'block';
-    progressContainer.style.display = 'none';
-    socket.emit('start_download', { url: url });
-});
-
-socket.on('error', function (data) {
-    alert("Сталася помилка: " + data.message);
-});
+    socket.on('error', function (data) {
+        alert("Сталася помилка: " + data.message);
+    });
 </script>
 {% endblock %}
